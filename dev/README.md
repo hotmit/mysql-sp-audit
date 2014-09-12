@@ -3,7 +3,7 @@
 
 
 
-#### Informations
+#### Useful Informations
 ```SQL
 #Get all the columns detail
 SELECT * FROM INFORMATION_SCHEMA.COLUMNS

@@ -6,6 +6,7 @@ Using trigger based stored procedure to create audit table. It follows the word 
 I put the requirement here so in case you want to run this in a lower version of mysql, you'll know where to change.
 
 * v5.x         Trigger support
+* V5.0.3     65,535 VARCHAR LENGTH
 * v5.0.10   INFORMATION_SCHEMA.TRIGGERS
 * v5.0.32   DROP ... IF EXISTS
 
@@ -25,7 +26,7 @@ I put the requirement here so in case you want to run this in a lower version of
 * zsp_generate_batch_audit ( @audit_schema_name, @audit_tables )
       * Put the comma separated list of table names to generate a batch of audit scripts
 * zsp_generate_remove_audit( @audit_schema_name, @audit_table_name )
-      *  Generate the script to remove the triggers and views
+      * Generate the script to remove the triggers and views
 ---
 ## Conflict
 * If you already have a trigger on your table, this is how you resolve it:
