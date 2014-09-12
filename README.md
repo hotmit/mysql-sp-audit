@@ -12,13 +12,16 @@ I put the requirement here so in case you want to run this in a lower version of
 
 ---
 ## Features
-* Enable/Disable using a stored procedure
-* Allow the table's schema to change, just need to rerun the stored procedure
-  * Keep deleted columns data
-* All values are stored as LONGTEXT therefore no blob support
-* Allow audit table up to 2 keys
-  * There will be a branch in the future to support 3 keys
-  * Possibly the number of keys can be specify in the setup script :)
+* Using stored procedures to generate the audit setup and remove scripts
+* The script will includes pre-generated views for easy access to the data
+* Centralized audit data, everything is stored in two table (similar to wordpress meta)
+* Allow the table's schemas to change, just need to rerun the stored procedure
+      * Keep deleted columns data
+* All values are stored as LONGTEXT therefore no blob support (as of now)
+* Allow audit table up to 2 primary keys
+      * There will be a branch in the future to support 3 keys
+      * Possibly the number of keys can be specify in the setup script :)
+
 
 ## Stored Procedures
 * zsp_generate_audit( @audit_schema_name, @audit_table_name )
