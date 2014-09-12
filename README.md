@@ -2,7 +2,7 @@
 Using trigger based stored procedure to create audit table. It follows the word press meta data approach to store the changes, so all the data is stores in just two centralized tables.
 
 ---
-## MySQL Components Requirement 
+## MySQL Component Requirements
 I put the requirement here so in case you want to run this in a lower version of mysql, you'll know where to change.
 
 * v5.x         Trigger support
@@ -12,13 +12,16 @@ I put the requirement here so in case you want to run this in a lower version of
 
 ---
 ## Features
-* Enable/Disable using a stored procedure
-* Allow the table's schema to change, just need to rerun the stored procedure
-  * Keep deleted columns data
-* All values are stored as LONGTEXT therefore no blob support
-* Allow audit table up to 2 keys
-  * There will be a branch in the future to support 3 keys
-  * Possibly the number of keys can be specify in the setup script :)
+* Using stored procedures to generate the audit setup and remove scripts
+* The script will includes pre-generated views for easy access to the data
+* Centralized audit data, everything is stored in two table (similar to wordpress meta)
+* Allow the table's schemas to change, just need to rerun the stored procedure
+      * Keep deleted columns data
+* All values are stored as LONGTEXT therefore no blob support (as of now)
+* Allow audit table up to 2 primary keys
+      * There will be a branch in the future to support 3 keys
+      * Possibly the number of keys can be specify in the setup script :)
+
 
 ## Stored Procedures
 * zsp_generate_audit( @audit_schema_name, @audit_table_name )
@@ -27,6 +30,7 @@ I put the requirement here so in case you want to run this in a lower version of
       * Put the comma separated list of table names to generate a batch of audit scripts
 * zsp_generate_remove_audit( @audit_schema_name, @audit_table_name )
       * Generate the script to remove the triggers and views
+	  
 ---
 ## Conflict
 * If you already have a trigger on your table, this is how you resolve it:
