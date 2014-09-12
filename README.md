@@ -21,17 +21,17 @@ I put the requirement here so in case you want to run this in a lower version of
 
 ## Stored Procedures
 * zsp_generate_audit( @audit_schema_name, @audit_table_name )
+      * Generate the audit script for one table
 * zsp_generate_batch_audit ( @audit_schema_name, @audit_tables )
-      * Put comma separated list of tables name
+      * Put the comma separated list of table names to generate a batch of audit scripts
 * zsp_generate_remove_audit( @audit_schema_name, @audit_table_name )
-
+      *  Generate the script to remove the triggers and views
 ---
 ## Conflict
 * If you already have a trigger on your table, this is how you resolve it:
 	 * Copy the code for your trigger, then remove it 
 	 * Run zsp_generate_audit()
-	 * Edit the trigger and add the code you copied
-	 * It is a bit hacky but less work for me :)
+	 * Edit the trigger and add the code you copied to the appropriate trigger	 
 
 ## Table Schema
 All names are prefixed with "z" to stay out of the way of your important stuff
@@ -41,27 +41,6 @@ All names are prefixed with "z" to stay out of the way of your important stuff
 |audit_id  	|user |table_name |pk1  	|pk2  	|action  	|time-stamp  |
 |---	|---	|---	|---	|---	|---	|---	|
 |Auto-increment, one number for each change  	|User that made the change |The table name |First primary key  	|Second primary key  	|Insert, update or delete  	|Time the changed occurred  	|
-
-
-#### Informations
-```SQL
-#Get all the columns detail
-SELECT * FROM INFORMATION_SCHEMA.COLUMNS
-
-#Get trigger info
-SELECT * FROM INFORMATION_SCHEMA.TRIGGERS
-
-#Combine multiple columns into a string
-SELECT 
-    GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION ASC SEPARATOR ', ')
-FROM
-    INFORMATION_SCHEMA.COLUMNS
-WHERE
-    TABLE_NAME = 'test_data'
-	
-```
-
-
 
 #### Meta Table: zaudit_meta
 
