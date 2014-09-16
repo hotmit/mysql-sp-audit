@@ -1,23 +1,57 @@
 -- --------------------------------------------------------------------
 -- MySQL Audit Trigger
--- Copyright (c) 2014 MIT License
+-- Copyright (c) 2014 Du T. Dang. MIT License
 -- https://github.com/hotmit/mysql-sp-audit
 -- --------------------------------------------------------------------
 DROP PROCEDURE IF EXISTS `zsp_generate_audit`;
 DELIMITER $$
 
-CREATE PROCEDURE `zsp_generate_audit` (IN audit_schema_name VARCHAR(255), IN audit_table_name VARCHAR(255))
+CREATE PROCEDURE `zsp_generate_audit` (IN audit_schema_name VARCHAR(255), IN audit_table_name VARCHAR(255), OUT script LONGTEXT, OUT errors LONGTEXT)
 main_block: BEGIN
 
-	DECLARE trg_insert, trg_update, trg_delete, vw_audit, vw_audit_meta LONGTEXT;
+	DECLARE trg_insert, trg_update, trg_delete, vw_audit, vw_audit_meta, out_errors LONGTEXT;
 	DECLARE stmt, header LONGTEXT;
 	DECLARE at_id1, at_id2 LONGTEXT;
-
-	-- TODO: check audit and meta table, exists of table provided, check trigger/view existence
-
+	DECLARE c INTEGER;
 
 	-- Default max length of GROUP_CONCAT IS 1024
 	SET SESSION group_concat_max_len = 100000;
+
+	SET out_errors := '';
+
+
+	-- Check audit and meta table exists
+	SET c := (SELECT COUNT(*) FROM information_schema.tables
+			WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
+				AND (BINARY table_name = BINARY 'zaudit' OR BINARY table_name = BINARY 'zaudit_meta') );
+	IF c <> 2 THEN
+		SET out_errors := CONCAT( out_errors, '\n', 'Audit table structure do not exists, please check or run the audit setup script again.' );
+	END IF;
+
+
+	-- Check to see if the specified table exists
+	SET c := (SELECT COUNT(*) FROM information_schema.tables
+			WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
+				AND BINARY table_name = BINARY audit_table_name);
+	IF c <> 1 THEN
+		SET out_errors := CONCAT( out_errors, '\n', 'The table you specified `', audit_schema_name, '`.`', audit_table_name, '` does not exists.' );
+	END IF;
+
+
+	-- Check triggers exists
+	SET c := ( SELECT GROUP_CONCAT( TRIGGER_NAME SEPARATOR ', ') FROM information_schema.triggers
+			WHERE BINARY EVENT_OBJECT_SCHEMA = BINARY audit_schema_name 
+				AND BINARY EVENT_OBJECT_TABLE = BINARY audit_table_name 
+				AND BINARY ACTION_TIMING = BINARY 'AFTER' AND BINARY TRIGGER_NAME NOT LIKE BINARY CONCAT('z', audit_table_name, '_%') GROUP BY EVENT_OBJECT_TABLE );
+	IF c IS NOT NULL AND LENGTH(c) > 0 THEN
+		SET out_errors := CONCAT( out_errors, '\n', 'MySQL 5 only supports one trigger per insert/update/delete action. Currently there are these triggers (', c, ')already assigned to `', audit_schema_name, '`.`', audit_table_name, '`. You must remove them before the audit trigger can be applied' );
+	END IF;
+
+	
+
+
+
+
 
 	-- Get the first primary key 
 	SET at_id1 := (SELECT COLUMN_NAME FROM information_schema.columns
@@ -38,18 +72,18 @@ main_block: BEGIN
 	SET header := CONCAT( 
 		'-- --------------------------------------------------------------------\n',
 		'-- MySQL Audit Trigger\n',
-		'-- Copyright (c) 2014 MIT License\n',
+		'-- Copyright (c) 2014 Du T. Dang. MIT License\n',
 		'-- https://github.com/hotmit/mysql-sp-audit\n',
 		'-- --------------------------------------------------------------------\n\n'		
 	);
 
 	
-	SET trg_insert := CONCAT( 'DROP TRIGGER IF EXISTS `', audit_schema_name, '`.`', audit_table_name, '_AINS`\n$$\n',
-						'CREATE TRIGGER `', audit_schema_name, '`.`', audit_table_name, '_AINS` AFTER INSERT ON `', audit_schema_name, '`.`', audit_table_name, '` FOR EACH ROW \nBEGIN\n', header );
-	SET trg_update := CONCAT( 'DROP TRIGGER IF EXISTS `', audit_schema_name, '`.`', audit_table_name, '_AUPD`\n$$\n',
-						'CREATE TRIGGER `', audit_schema_name, '`.`', audit_table_name, '_AUPD` AFTER UPDATE ON `', audit_schema_name, '`.`', audit_table_name, '` FOR EACH ROW \nBEGIN\n', header );
-	SET trg_delete := CONCAT( 'DROP TRIGGER IF EXISTS `', audit_schema_name, '`.`', audit_table_name, '_ADEL`\n$$\n',
-						'CREATE TRIGGER `', audit_schema_name, '`.`', audit_table_name, '_ADEL` AFTER DELETE ON `', audit_schema_name, '`.`', audit_table_name, '` FOR EACH ROW \nBEGIN\n', header );
+	SET trg_insert := CONCAT( 'DROP TRIGGER IF EXISTS `', audit_schema_name, '`.`z', audit_table_name, '_AINS`\n$$\n',
+						'CREATE TRIGGER `', audit_schema_name, '`.`z', audit_table_name, '_AINS` AFTER INSERT ON `', audit_schema_name, '`.`', audit_table_name, '` FOR EACH ROW \nBEGIN\n', header );
+	SET trg_update := CONCAT( 'DROP TRIGGER IF EXISTS `', audit_schema_name, '`.`z', audit_table_name, '_AUPD`\n$$\n',
+						'CREATE TRIGGER `', audit_schema_name, '`.`z', audit_table_name, '_AUPD` AFTER UPDATE ON `', audit_schema_name, '`.`', audit_table_name, '` FOR EACH ROW \nBEGIN\n', header );
+	SET trg_delete := CONCAT( 'DROP TRIGGER IF EXISTS `', audit_schema_name, '`.`z', audit_table_name, '_ADEL`\n$$\n',
+						'CREATE TRIGGER `', audit_schema_name, '`.`z', audit_table_name, '_ADEL` AFTER DELETE ON `', audit_schema_name, '`.`', audit_table_name, '` FOR EACH ROW \nBEGIN\n', header );
 
 	SET stmt := 'DECLARE zaudit_last_inserted_id BIGINT(20);\n\n';
 	SET trg_insert := CONCAT( trg_insert, stmt );
@@ -171,6 +205,8 @@ main_block: BEGIN
 		'-- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n',
 		'-- --------------------------------------------------------------------\n',
 		'-- Audit Script For `',audit_schema_name, '`.`', audit_table_name, '`\n',
+		'-- Date Generated: ', NOW(), '\n',
+		'-- Generated By: ', CURRENT_USER(), '\n',
 		'-- BEGIN\n',
 		'-- --------------------------------------------------------------------\n\n'	
 		'DELIMITER $$',
@@ -197,6 +233,8 @@ main_block: BEGIN
 		'-- $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n'
 		);
 
-	SELECT stmt AS `Audit Script`;
+	-- SELECT stmt AS `Audit Script`, out_errors AS `ERRORS`;
 
+	SET script := stmt;
+	SET errors := out_errors;
 END

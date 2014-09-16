@@ -40,3 +40,15 @@ select * from
 	information_schema.TRIGGERS
 where
     table_name = 'test_data';
+
+
+SELECT * FROM information_schema.views;
+SELECT * FROM information_schema.triggers;
+
+
+
+
+ SELECT GROUP_CONCAT( TRIGGER_NAME SEPARATOR ', ') FROM information_schema.triggers
+			WHERE  
+				 ACTION_TIMING = 'AFTER' AND TRIGGER_NAME NOT LIKE CONCAT('z', 'test_data', '_%') GROUP BY EVENT_OBJECT_TABLE 
+
