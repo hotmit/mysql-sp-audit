@@ -1,1 +1,1 @@
-node build.js
+node build.js %1 %2

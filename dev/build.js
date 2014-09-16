@@ -1,10 +1,17 @@
 console.log('Building MySQL SP Audit Script ...');
 
-var result = '', data;
+var data, result = '\
+-- -------------------------------------------------------------------- \n\
+-- MySQL Audit Trigger \n\
+-- Copyright (c) 2014 Du T. Dang. MIT License \n\
+-- https://github.com/hotmit/mysql-sp-audit \n\
+-- Version: v' + process.argv[2] + '\n\
+-- Build Date: ' + new Date().toUTCString() + '\n\
+-- -------------------------------------------------------------------- \n';
 
 data = readFile(__dirname + '/tbl_zaudit.sql');	
 if (!data) { process.exit(1); }
-result += data;
+result += removeHeader(data);
 
 data = readFile(__dirname + '/zsp_generate_audit.sql');
 if (!data) { process.exit(1); }
