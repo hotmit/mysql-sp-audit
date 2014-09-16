@@ -38,3 +38,4 @@ main_block: BEGIN
 	);
 
 END
+$$

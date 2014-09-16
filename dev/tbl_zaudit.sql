@@ -1,4 +1,11 @@
+-- --------------------------------------------------------------------
+-- MySQL Audit Trigger
+-- Copyright (c) 2014 Du T. Dang. MIT License
+-- https://github.com/hotmit/mysql-sp-audit
+-- --------------------------------------------------------------------
+
 DELIMITER $$
+
 DROP TABLE IF EXISTS `zaudit`
 $$
 CREATE TABLE `zaudit` (

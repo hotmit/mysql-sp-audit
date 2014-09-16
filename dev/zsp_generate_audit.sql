@@ -3,8 +3,11 @@
 -- Copyright (c) 2014 Du T. Dang. MIT License
 -- https://github.com/hotmit/mysql-sp-audit
 -- --------------------------------------------------------------------
-DROP PROCEDURE IF EXISTS `zsp_generate_audit`;
+
 DELIMITER $$
+
+DROP PROCEDURE IF EXISTS `zsp_generate_audit`;
+$$
 
 CREATE PROCEDURE `zsp_generate_audit` (IN audit_schema_name VARCHAR(255), IN audit_table_name VARCHAR(255), OUT script LONGTEXT, OUT errors LONGTEXT)
 main_block: BEGIN
@@ -238,3 +241,4 @@ main_block: BEGIN
 	SET script := stmt;
 	SET errors := out_errors;
 END
+$$

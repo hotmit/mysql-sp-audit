@@ -46,3 +46,4 @@ main_block: BEGIN
 
 	SELECT script, out_errors AS `ERRORS`;
 END
+$$
