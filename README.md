@@ -10,6 +10,23 @@ I put the requirement here so in case you want to run this in a lower version of
 * v5.0.32   DROP ... IF EXISTS
 
 ---
+## Usage
+1. Run 'mysql_sp_audit_setup.sql' script. 
+	* This will create:
+		a. `zaudit` and `zaudit_meta tables` (the table that holds the data for the audits)
+		a. Stored procedures:
+			* zsp_generate_audit: generates audit script for one table
+			* zsp_generate_batch_audit: generates a script for multiple table at a time
+			* zsp_generate_remove_audit: generates the script to remove audit from one table
+1. Enable the audit on the table you want.
+	* zsp_generate_audit( @audit_schema_name, @audit_table_name, OUT @script, OUT @errors )
+	* ie. zsp_generate_audit( 'your_db_name', 'contact', @output_script, @output_errors)
+	* Copy the value from @output_script and run it
+		* Now you should see three triggers and 2 new views on the contact table
+			* Triggers: zcontact_AINS, zcontact_AUPD, and zcontact_ADEL
+			* Views: zvw_audit_contact and zvw_audit_contact_meta
+
+---
 ## Features
 * Using stored procedures to generate the audit setup and remove scripts
 * The script will includes pre-generated views for easy access to the data
