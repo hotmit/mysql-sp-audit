@@ -1,8 +1,11 @@
 #### Dev Environment
-* Import tbl_zaudit.sql to create audit structure and two test tables
+* Import tbl_zaudit.sql to create audit structure 
+* Import tbl_test_tables.sql to create test_data and multi_key tables for testing
 
+#### Build For Release
+	* node build.js <release_version> [<--no-copyright>]
 
-
+---
 #### Useful Informations
 ```SQL
 #Get all the columns detail
