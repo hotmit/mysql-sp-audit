@@ -121,10 +121,10 @@ main_block: BEGIN
 	SET trg_delete := CONCAT( trg_delete, '\n', stmt );
 
 	SET stmt := ( SELECT GROUP_CONCAT('   (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', NULL, ',						
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'HEX(' ELSE '' END,
-							'NEW.`', COLUMN_NAME, '`', ') ' ,
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ')' ELSE '' END,
-						','
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'CAST(' ELSE '' END,
+							'NEW.`', COLUMN_NAME, '`', 
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ' AS CHAR CHARACTER SET utf8)' ELSE '' END,
+						'),' 
 					SEPARATOR '\n') 
 					FROM information_schema.columns
 						WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
@@ -135,14 +135,14 @@ main_block: BEGIN
 
 
 	SET stmt := ( SELECT GROUP_CONCAT('   (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', ', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'HEX(' ELSE '' END,
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'CAST(' ELSE '' END,
 							'OLD.`', COLUMN_NAME, '`', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ')' ELSE '' END,
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ' AS CHAR CHARACTER SET utf8)' ELSE '' END,
 						', ',
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'HEX(' ELSE '' END,
-							'NEW.`', COLUMN_NAME, '`', ') ' ,
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ')' ELSE '' END,
-						','
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'CAST(' ELSE '' END,
+							'NEW.`', COLUMN_NAME, '`', 
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ' AS CHAR CHARACTER SET utf8)' ELSE '' END,
+						'),'
 					SEPARATOR '\n') 
 					FROM information_schema.columns
 						WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
@@ -153,9 +153,9 @@ main_block: BEGIN
 
 
 	SET stmt := ( SELECT GROUP_CONCAT('   (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', ', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'HEX(' ELSE '' END,
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'CAST(' ELSE '' END,
 							'OLD.`', COLUMN_NAME, '`', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ')' ELSE '' END,
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ' AS CHAR CHARACTER SET utf8)' ELSE '' END,
 						', NULL ),'
 					SEPARATOR '\n') 
 					FROM information_schema.columns
