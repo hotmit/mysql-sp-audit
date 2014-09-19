@@ -27,8 +27,8 @@ CREATE TABLE `zaudit_meta` (
   `audit_meta_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `audit_id` bigint(20) unsigned NOT NULL,
   `col_name` varchar(255) NOT NULL,
-  `old_value` longtext,
-  `new_value` varchar(255) DEFAULT NULL,
+  `old_value` longtext DEFAULT NULL,
+  `new_value` longtext DEFAULT NULL,
   PRIMARY KEY (`audit_meta_id`),
   KEY `zaudit_meta_index` (`audit_id`,`col_name`) USING BTREE
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8;
