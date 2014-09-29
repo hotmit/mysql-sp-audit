@@ -22,6 +22,15 @@ main_block: BEGIN
 
 	SET out_errors := '';
 
+	-- Check to see if the specified table exists
+	SET c := (SELECT COUNT(*) FROM information_schema.tables
+			WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
+				AND BINARY table_name = BINARY audit_table_name);
+	IF c <> 1 THEN
+		SET out_errors := CONCAT( out_errors, '\n', 'The table you specified `', audit_schema_name, '`.`', audit_table_name, '` does not exists.' );
+		LEAVE main_block;
+	END IF;
+
 
 	-- Check audit and meta table exists
 	SET c := (SELECT COUNT(*) FROM information_schema.tables
@@ -32,29 +41,16 @@ main_block: BEGIN
 	END IF;
 
 
-	-- Check to see if the specified table exists
-	SET c := (SELECT COUNT(*) FROM information_schema.tables
-			WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
-				AND BINARY table_name = BINARY audit_table_name);
-	IF c <> 1 THEN
-		SET out_errors := CONCAT( out_errors, '\n', 'The table you specified `', audit_schema_name, '`.`', audit_table_name, '` does not exists.' );
-	END IF;
-
-
 	-- Check triggers exists
 	SET c := ( SELECT GROUP_CONCAT( TRIGGER_NAME SEPARATOR ', ') FROM information_schema.triggers
 			WHERE BINARY EVENT_OBJECT_SCHEMA = BINARY audit_schema_name 
 				AND BINARY EVENT_OBJECT_TABLE = BINARY audit_table_name 
 				AND BINARY ACTION_TIMING = BINARY 'AFTER' AND BINARY TRIGGER_NAME NOT LIKE BINARY CONCAT('z', audit_table_name, '_%') GROUP BY EVENT_OBJECT_TABLE );
 	IF c IS NOT NULL AND LENGTH(c) > 0 THEN
-		SET out_errors := CONCAT( out_errors, '\n', 'MySQL 5 only supports one trigger per insert/update/delete action. Currently there are these triggers (', c, ')already assigned to `', audit_schema_name, '`.`', audit_table_name, '`. You must remove them before the audit trigger can be applied' );
+		SET out_errors := CONCAT( out_errors, '\n', 'MySQL 5 only supports one trigger per insert/update/delete action. Currently there are these triggers (', c, ') already assigned to `', audit_schema_name, '`.`', audit_table_name, '`. You must remove them before the audit trigger can be applied' );
 	END IF;
 
 	
-
-
-
-
 
 	-- Get the first primary key 
 	SET at_id1 := (SELECT COLUMN_NAME FROM information_schema.columns
@@ -68,9 +64,12 @@ main_block: BEGIN
 				AND BINARY table_name = BINARY audit_table_name
 			AND column_key = 'PRI' LIMIT 1,1);
 
-	-- TODO: check at least one id exist
+	-- Check at least one id exists
+	IF at_id1 IS NULL AND at_id2 IS NULL THEN 
+		SET out_errors := CONCAT( out_errors, '\n', 'The table you specified `', audit_schema_name, '`.`', audit_table_name, '` does not have any primary key.' );
+	END IF;
 
-	-- LEAVE main_block;
+
 
 	SET header := CONCAT( 
 		'-- --------------------------------------------------------------------\n',
@@ -120,28 +119,35 @@ main_block: BEGIN
 	SET trg_update := CONCAT( trg_update, '\n', stmt );
 	SET trg_delete := CONCAT( trg_delete, '\n', stmt );
 
-	SET stmt := ( SELECT GROUP_CONCAT('   (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', NULL, ',						
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'CAST(' ELSE '' END,
-							'NEW.`', COLUMN_NAME, '`', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ' AS CHAR CHARACTER SET utf8)' ELSE '' END,
-						'),' 
-					SEPARATOR '\n') 
+	SET stmt := ( SELECT GROUP_CONCAT(' (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', NULL, ',	
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 
+							'''[UNSUPPORTED BINARY DATATYPE]''' 
+						ELSE 						
+							CONCAT('NEW.`', COLUMN_NAME, '`')
+						END,
+						'),'
+					SEPARATOR '\n')
 					FROM information_schema.columns
-						WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
+						WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name
 							AND BINARY TABLE_NAME = BINARY audit_table_name );
 
 	SET stmt := CONCAT( TRIM( TRAILING ',' FROM stmt ), ';\n\nEND\n$$' );
 	SET trg_insert := CONCAT( trg_insert, stmt );
 
 
+
 	SET stmt := ( SELECT GROUP_CONCAT('   (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', ', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'CAST(' ELSE '' END,
-							'OLD.`', COLUMN_NAME, '`', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ' AS CHAR CHARACTER SET utf8)' ELSE '' END,
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN
+							'''[SAME]'''
+						ELSE
+							CONCAT('OLD.`', COLUMN_NAME, '`')
+						END,
 						', ',
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'CAST(' ELSE '' END,
-							'NEW.`', COLUMN_NAME, '`', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ' AS CHAR CHARACTER SET utf8)' ELSE '' END,
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN
+							CONCAT('CASE WHEN BINARY OLD.`', COLUMN_NAME, '` <=> BINARY NEW.`', COLUMN_NAME, '` THEN ''[SAME]'' ELSE ''[CHANGED]'' END')
+						ELSE
+							CONCAT('NEW.`', COLUMN_NAME, '`')
+						END,
 						'),'
 					SEPARATOR '\n') 
 					FROM information_schema.columns
@@ -152,10 +158,13 @@ main_block: BEGIN
 	SET trg_update := CONCAT( trg_update, stmt );
 
 
+
 	SET stmt := ( SELECT GROUP_CONCAT('   (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', ', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'CAST(' ELSE '' END,
-							'OLD.`', COLUMN_NAME, '`', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ' AS CHAR CHARACTER SET utf8)' ELSE '' END,
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 
+							'''[UNSUPPORTED BINARY DATATYPE]''' 
+						ELSE 						
+							CONCAT('OLD.`', COLUMN_NAME, '`')
+						END,
 						', NULL ),'
 					SEPARATOR '\n') 
 					FROM information_schema.columns
