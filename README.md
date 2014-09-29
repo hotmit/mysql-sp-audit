@@ -8,7 +8,6 @@ I put the requirement here so in case you want to run this in a lower version of
 * v5.x         Trigger support
 * v5.0.10   INFORMATION_SCHEMA.TRIGGERS
 * v5.0.32   DROP ... IF EXISTS
-
 * v5.6.1     Base64 (not yet implemented)
 
 ---
@@ -63,6 +62,8 @@ I put the requirement here so in case you want to run this in a lower version of
 ## Conventions
 All names are prefixed with "z" to stay out of the way of your important stuff
 
+---
+## Tables
 ##### Audit Table: zaudit
 
 |audit_id  	|user |table_name |pk1  	|pk2  	|action  	|time-stamp  |
