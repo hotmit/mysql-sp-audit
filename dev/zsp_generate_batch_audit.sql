@@ -9,41 +9,42 @@ DELIMITER $$
 DROP PROCEDURE IF EXISTS `zsp_generate_batch_audit`
 $$
 
-CREATE PROCEDURE `zsp_generate_batch_audit` (IN audit_schema_name VARCHAR(255), IN audit_table_names VARCHAR(255), OUT script LONGTEXT, OUT errors LONGTEXT)
+CREATE PROCEDURE `zsp_generate_batch_audit` (IN audit_schema_name VARCHAR(255), IN audit_table_names VARCHAR(255), OUT out_script LONGTEXT, OUT out_error_msgs LONGTEXT)
 main_block: BEGIN
 
-	DECLARE script, out_errors, stmt, error_msg LONGTEXT;
+	DECLARE s, e, scripts, error_msgs LONGTEXT;
 	DECLARE audit_table_name VARCHAR(255);
 	DECLARE done INT DEFAULT FALSE;
-	DECLARE cursor_table_list CURSOR FOR ( SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES 
+	DECLARE cursor_table_list CURSOR FOR SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES 
 		WHERE BINARY TABLE_TYPE = BINARY 'BASE TABLE' 
 			AND BINARY TABLE_SCHEMA = BINARY audit_schema_name
-			AND LOCATE( BINARY CONCAT(TABLE_NAME, ','), BINARY CONCAT(audit_table_names, ',') ) > 0 );
+			AND LOCATE( BINARY CONCAT(TABLE_NAME, ','), BINARY CONCAT(audit_table_names, ',') ) > 0;
 
 	DECLARE CONTINUE HANDLER
-		FOR NOT FOUND SET done = 1;
+		FOR NOT FOUND SET done = TRUE;
 
-	SET script := '';
-	SET out_erros := '';
+	SET scripts := '';
+	SET error_msgs := '';
 
 	OPEN cursor_table_list;
 
 	cur_loop: LOOP
-		FETCH cursor_table_list INTO audit_table_name;		
+		FETCH cursor_table_list INTO audit_table_name;
 
 		IF done THEN
 			LEAVE cur_loop;
 		END IF;
 
+		CALL zsp_generate_audit(audit_schema_name, audit_table_name, s, e);
 
-
-		SET script := CONCAT( script, '\n\n', stmt );
-		SET out_errors := CONCAT( out_errors, '\n\n', error_msg );
+		SET scripts := CONCAT( scripts, '\n\n', IFNULL(s, '') );
+		SET error_msgs := CONCAT( error_msgs, '\n\n', IFNULL(e, '') );
 
 	END LOOP;
 
 	CLOSE cursor_table_list;
 
-	SELECT script, out_errors AS `ERRORS`;
+	SET out_script := scripts;
+	SET out_error_msgs := error_msgs;
 END
 $$
