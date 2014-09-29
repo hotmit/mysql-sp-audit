@@ -1,16 +1,16 @@
-console.log('Building MySQL SP Audit Script ...');
-
 //console.log(process.argv.length);
 //console.log(process.argv);
 
 if (process.argv.length != 3){
-		if (process.argv.length == 4 && process.argv[3] == '--no-copyright'){		
+		if (process.argv.length == 4 && process.argv[3] == '--no-copyright'){
 		}
 		else {
 			displayHelp();
 			process.exit(1);	
 		}
 }
+
+console.log('Building MySQL SP Audit Script ...');
 
 function displayHelp(){
 	console.log('');
@@ -21,30 +21,28 @@ function displayHelp(){
 	console.log('	    --no-copyright remove the copyright notice from the script (if you want to)');
 }	
 	
-var data, result = '\
+var data, file, result = '\
 -- -------------------------------------------------------------------- \n\
 -- MySQL Audit Trigger \n\
 -- Copyright (c) 2014 Du T. Dang. MIT License \n\
 -- https://github.com/hotmit/mysql-sp-audit \n\
 -- Version: v' + process.argv[2] + '\n\
 -- Build Date: ' + new Date().toUTCString() + '\n\
--- -------------------------------------------------------------------- \n';
+-- -------------------------------------------------------------------- \n', 
+	fileList = ['tbl_zaudit.sql', 'zsp_generate_audit.sql', 'zsp_generate_batch_audit.sql', 
+				'zsp_generate_remove_audit.sql', 'zsp_generate_batch_remove_audit.sql'];
 
-data = readFile(__dirname + '/tbl_zaudit.sql');	
-if (!data) { process.exit(1); }
-result += removeHeader(data);
 
-data = readFile(__dirname + '/zsp_generate_audit.sql');
-if (!data) { process.exit(1); }
-result += removeHeader(data);
-
-data = readFile(__dirname + '/zsp_generate_batch_audit.sql');
-if (!data) { process.exit(1); }
-result += removeHeader(data);	
-
-data = readFile(__dirname + '/zsp_generate_remove_audit.sql');
-if (!data) { process.exit(1); }
-result += removeHeader(data);
+for (var i=0; i<fileList.length; i++){	
+	file = fileList[i];
+	data = readFile(__dirname + '/' + file);	
+	if (!data) 
+	{ 
+		console.log('Error: cannot read file ' + file);
+		process.exit(1); 
+	}
+	result += removeHeader(data);
+}
 
 
 // nodejs build.js v1.0 --no-copyright
@@ -55,9 +53,6 @@ if (process.argv.length == 4 && process.argv[3] == '--no-copyright')
 }
 
 writeFile(__dirname + '/../mysql_sp_audit_setup.sql', result);
-
-
-
 
 
 function readFile(file){
