@@ -2,8 +2,8 @@
 -- MySQL Audit Trigger 
 -- Copyright (c) 2014 Du T. Dang. MIT License 
 -- https://github.com/hotmit/mysql-sp-audit 
--- Version: v0.1
--- Build Date: Tue, 16 Sep 2014 16:19:03 GMT
+-- Version: v1.0
+-- Build Date: Mon, 29 Sep 2014 16:12:52 GMT
 -- -------------------------------------------------------------------- 
 
 
@@ -28,8 +28,8 @@ CREATE TABLE `zaudit_meta` (
   `audit_meta_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `audit_id` bigint(20) unsigned NOT NULL,
   `col_name` varchar(255) NOT NULL,
-  `old_value` longtext,
-  `new_value` varchar(255) DEFAULT NULL,
+  `old_value` longtext DEFAULT NULL,
+  `new_value` longtext DEFAULT NULL,
   PRIMARY KEY (`audit_meta_id`),
   KEY `zaudit_meta_index` (`audit_id`,`col_name`) USING BTREE
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8;
@@ -52,6 +52,15 @@ main_block: BEGIN
 
 	SET out_errors := '';
 
+	-- Check to see if the specified table exists
+	SET c := (SELECT COUNT(*) FROM information_schema.tables
+			WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
+				AND BINARY table_name = BINARY audit_table_name);
+	IF c <> 1 THEN
+		SET out_errors := CONCAT( out_errors, '\n', 'The table you specified `', audit_schema_name, '`.`', audit_table_name, '` does not exists.' );
+		LEAVE main_block;
+	END IF;
+
 
 	-- Check audit and meta table exists
 	SET c := (SELECT COUNT(*) FROM information_schema.tables
@@ -62,29 +71,16 @@ main_block: BEGIN
 	END IF;
 
 
-	-- Check to see if the specified table exists
-	SET c := (SELECT COUNT(*) FROM information_schema.tables
-			WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
-				AND BINARY table_name = BINARY audit_table_name);
-	IF c <> 1 THEN
-		SET out_errors := CONCAT( out_errors, '\n', 'The table you specified `', audit_schema_name, '`.`', audit_table_name, '` does not exists.' );
-	END IF;
-
-
 	-- Check triggers exists
 	SET c := ( SELECT GROUP_CONCAT( TRIGGER_NAME SEPARATOR ', ') FROM information_schema.triggers
 			WHERE BINARY EVENT_OBJECT_SCHEMA = BINARY audit_schema_name 
 				AND BINARY EVENT_OBJECT_TABLE = BINARY audit_table_name 
 				AND BINARY ACTION_TIMING = BINARY 'AFTER' AND BINARY TRIGGER_NAME NOT LIKE BINARY CONCAT('z', audit_table_name, '_%') GROUP BY EVENT_OBJECT_TABLE );
 	IF c IS NOT NULL AND LENGTH(c) > 0 THEN
-		SET out_errors := CONCAT( out_errors, '\n', 'MySQL 5 only supports one trigger per insert/update/delete action. Currently there are these triggers (', c, ')already assigned to `', audit_schema_name, '`.`', audit_table_name, '`. You must remove them before the audit trigger can be applied' );
+		SET out_errors := CONCAT( out_errors, '\n', 'MySQL 5 only supports one trigger per insert/update/delete action. Currently there are these triggers (', c, ') already assigned to `', audit_schema_name, '`.`', audit_table_name, '`. You must remove them before the audit trigger can be applied' );
 	END IF;
 
 	
-
-
-
-
 
 	-- Get the first primary key 
 	SET at_id1 := (SELECT COLUMN_NAME FROM information_schema.columns
@@ -98,9 +94,12 @@ main_block: BEGIN
 				AND BINARY table_name = BINARY audit_table_name
 			AND column_key = 'PRI' LIMIT 1,1);
 
-	-- TODO: check at least one id exist
+	-- Check at least one id exists
+	IF at_id1 IS NULL AND at_id2 IS NULL THEN 
+		SET out_errors := CONCAT( out_errors, '\n', 'The table you specified `', audit_schema_name, '`.`', audit_table_name, '` does not have any primary key.' );
+	END IF;
 
-	-- LEAVE main_block;
+
 
 	SET header := CONCAT( 
 		'-- --------------------------------------------------------------------\n',
@@ -150,29 +149,36 @@ main_block: BEGIN
 	SET trg_update := CONCAT( trg_update, '\n', stmt );
 	SET trg_delete := CONCAT( trg_delete, '\n', stmt );
 
-	SET stmt := ( SELECT GROUP_CONCAT('   (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', NULL, ',						
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'HEX(' ELSE '' END,
-							'NEW.`', COLUMN_NAME, '`', ') ' ,
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ')' ELSE '' END,
-						','
-					SEPARATOR '\n') 
+	SET stmt := ( SELECT GROUP_CONCAT(' (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', NULL, ',	
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 
+							'''[UNSUPPORTED BINARY DATATYPE]''' 
+						ELSE 						
+							CONCAT('NEW.`', COLUMN_NAME, '`')
+						END,
+						'),'
+					SEPARATOR '\n')
 					FROM information_schema.columns
-						WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
+						WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name
 							AND BINARY TABLE_NAME = BINARY audit_table_name );
 
 	SET stmt := CONCAT( TRIM( TRAILING ',' FROM stmt ), ';\n\nEND\n$$' );
 	SET trg_insert := CONCAT( trg_insert, stmt );
 
 
+
 	SET stmt := ( SELECT GROUP_CONCAT('   (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', ', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'HEX(' ELSE '' END,
-							'OLD.`', COLUMN_NAME, '`', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ')' ELSE '' END,
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN
+							'''[SAME]'''
+						ELSE
+							CONCAT('OLD.`', COLUMN_NAME, '`')
+						END,
 						', ',
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'HEX(' ELSE '' END,
-							'NEW.`', COLUMN_NAME, '`', ') ' ,
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ')' ELSE '' END,
-						','
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN
+							CONCAT('CASE WHEN BINARY OLD.`', COLUMN_NAME, '` <=> BINARY NEW.`', COLUMN_NAME, '` THEN ''[SAME]'' ELSE ''[CHANGED]'' END')
+						ELSE
+							CONCAT('NEW.`', COLUMN_NAME, '`')
+						END,
+						'),'
 					SEPARATOR '\n') 
 					FROM information_schema.columns
 						WHERE BINARY TABLE_SCHEMA = BINARY audit_schema_name 
@@ -182,10 +188,13 @@ main_block: BEGIN
 	SET trg_update := CONCAT( trg_update, stmt );
 
 
+
 	SET stmt := ( SELECT GROUP_CONCAT('   (zaudit_last_inserted_id, ''', COLUMN_NAME, ''', ', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 'HEX(' ELSE '' END,
-							'OLD.`', COLUMN_NAME, '`', 
-						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN ')' ELSE '' END,
+						CASE WHEN INSTR( '|binary|varbinary|tinyblob|blob|mediumblob|longblob|', LOWER(DATA_TYPE) ) <> 0 THEN 
+							'''[UNSUPPORTED BINARY DATATYPE]''' 
+						ELSE 						
+							CONCAT('OLD.`', COLUMN_NAME, '`')
+						END,
 						', NULL ),'
 					SEPARATOR '\n') 
 					FROM information_schema.columns
@@ -276,42 +285,43 @@ $$
 DROP PROCEDURE IF EXISTS `zsp_generate_batch_audit`
 $$
 
-CREATE PROCEDURE `zsp_generate_batch_audit` (IN audit_schema_name VARCHAR(255), IN audit_table_names VARCHAR(255), OUT script LONGTEXT, OUT errors LONGTEXT)
+CREATE PROCEDURE `zsp_generate_batch_audit` (IN audit_schema_name VARCHAR(255), IN audit_table_names VARCHAR(255), OUT out_script LONGTEXT, OUT out_error_msgs LONGTEXT)
 main_block: BEGIN
 
-	DECLARE script, out_errors, stmt, error_msg LONGTEXT;
+	DECLARE s, e, scripts, error_msgs LONGTEXT;
 	DECLARE audit_table_name VARCHAR(255);
 	DECLARE done INT DEFAULT FALSE;
-	DECLARE cursor_table_list CURSOR FOR ( SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES 
+	DECLARE cursor_table_list CURSOR FOR SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES 
 		WHERE BINARY TABLE_TYPE = BINARY 'BASE TABLE' 
 			AND BINARY TABLE_SCHEMA = BINARY audit_schema_name
-			AND LOCATE( BINARY CONCAT(TABLE_NAME, ','), BINARY CONCAT(audit_table_names, ',') ) > 0 );
+			AND LOCATE( BINARY CONCAT(TABLE_NAME, ','), BINARY CONCAT(audit_table_names, ',') ) > 0;
 
 	DECLARE CONTINUE HANDLER
-		FOR NOT FOUND SET done = 1;
+		FOR NOT FOUND SET done = TRUE;
 
-	SET script := '';
-	SET out_erros := '';
+	SET scripts := '';
+	SET error_msgs := '';
 
 	OPEN cursor_table_list;
 
 	cur_loop: LOOP
-		FETCH cursor_table_list INTO audit_table_name;		
+		FETCH cursor_table_list INTO audit_table_name;
 
 		IF done THEN
 			LEAVE cur_loop;
 		END IF;
 
+		CALL zsp_generate_audit(audit_schema_name, audit_table_name, s, e);
 
-
-		SET script := CONCAT( script, '\n\n', stmt );
-		SET out_errors := CONCAT( out_errors, '\n\n', error_msg );
+		SET scripts := CONCAT( scripts, '\n\n', IFNULL(s, '') );
+		SET error_msgs := CONCAT( error_msgs, '\n\n', IFNULL(e, '') );
 
 	END LOOP;
 
 	CLOSE cursor_table_list;
 
-	SELECT script, out_errors AS `ERRORS`;
+	SET out_script := scripts;
+	SET out_error_msgs := error_msgs;
 END
 $$
 
@@ -346,5 +356,45 @@ main_block: BEGIN
 		'-- $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n'
 	);
 
+END
+$$
+
+DROP PROCEDURE IF EXISTS `zsp_generate_batch_remove_audit`
+$$
+
+CREATE PROCEDURE `zsp_generate_batch_remove_audit` (IN audit_schema_name VARCHAR(255), IN audit_table_names VARCHAR(255), OUT out_script LONGTEXT)
+main_block: BEGIN
+
+	DECLARE s, scripts LONGTEXT;
+	DECLARE audit_table_name VARCHAR(255);
+	DECLARE done INT DEFAULT FALSE;
+	DECLARE cursor_table_list CURSOR FOR SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES 
+		WHERE BINARY TABLE_TYPE = BINARY 'BASE TABLE' 
+			AND BINARY TABLE_SCHEMA = BINARY audit_schema_name
+			AND LOCATE( BINARY CONCAT(TABLE_NAME, ','), BINARY CONCAT(audit_table_names, ',') ) > 0;
+
+	DECLARE CONTINUE HANDLER
+		FOR NOT FOUND SET done = TRUE;
+
+	SET scripts := '';
+
+	OPEN cursor_table_list;
+
+	cur_loop: LOOP
+		FETCH cursor_table_list INTO audit_table_name;
+
+		IF done THEN
+			LEAVE cur_loop;
+		END IF;
+
+		CALL zsp_generate_remove_audit(audit_schema_name, audit_table_name, s);
+
+		SET scripts := CONCAT( scripts, '\n\n', IFNULL(s, '') );
+
+	END LOOP;
+
+	CLOSE cursor_table_list;
+
+	SET out_script := scripts;
 END
 $$
