@@ -1,16 +1,24 @@
 console.log('Building MySQL SP Audit Script ...');
 
-if (!process.argv[2] || 
-		(!process.argv[3] && process.argv[3] != '--no-copyright')){
-	displayHelp();
-	process.exit(1);
+//console.log(process.argv.length);
+//console.log(process.argv);
+
+if (process.argv.length != 3){
+		if (process.argv.length == 4 && process.argv[3] == '--no-copyright'){		
+		}
+		else {
+			displayHelp();
+			process.exit(1);	
+		}
 }
 
 function displayHelp(){
 	console.log('');
-	console.log('USAGE: nodejs build.js <release_version> [<--no-copyright>]');
-	console.log('	<release_version> do not need to postfix with the little "v"');
-	console.log('	--no-copyright remove the copyright notice from the script (if you want to)');
+	console.log('USAGE: node build.js <release_version> [<--no-copyright>]');
+	console.log('    eg. node build.js 1.0');
+	console.log('    eg. node build.js 1.7 --no-copyright');
+	console.log('	    <release_version> do not need to postfix with the little "v"');
+	console.log('	    --no-copyright remove the copyright notice from the script (if you want to)');
 }	
 	
 var data, result = '\
