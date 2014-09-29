@@ -9,18 +9,21 @@ I put the requirement here so in case you want to run this in a lower version of
 * v5.0.10   INFORMATION_SCHEMA.TRIGGERS
 * v5.0.32   DROP ... IF EXISTS
 
+* v5.6.1     Base64 (not yet implemented)
+
 ---
 ## Usage
 1. Run 'mysql_sp_audit_setup.sql' script. 
 	* This will create:
-		a. `zaudit` and `zaudit_meta tables` (the table that holds the data for the audits)
+		a. `zaudit` and `zaudit_meta tables` (the tables that hold the data for all the audits)
 		a. Stored procedures:
 			* zsp_generate_audit: generates audit script for one table
 			* zsp_generate_batch_audit: generates a script for multiple table at a time
 			* zsp_generate_remove_audit: generates the script to remove audit from one table
-1. Enable the audit on the table you want.
+			* zsp_generate_batch_remove_audit: generates a script for multiple table at a time
+1. To Enable the audit on the table you want.
 	* zsp_generate_audit( @audit_schema_name, @audit_table_name, OUT @script, OUT @errors )
-	* ie. zsp_generate_audit( 'your_db_name', 'contact', @output_script, @output_errors)
+		* ie. zsp_generate_audit( 'your_db_name', 'contact', @output_script, @output_errors)
 	* Copy the value from @output_script and run it
 		* Now you should see three triggers and 2 new views on the contact table
 			* Triggers: zcontact_AINS, zcontact_AUPD, and zcontact_ADEL
@@ -34,11 +37,10 @@ I put the requirement here so in case you want to run this in a lower version of
 * Allow the table's schemas to change, just need to rerun the stored procedure
       * Keep deleted columns data
 * All values are stored as LONGTEXT therefore no blob support (as of now)
-* Allow audit table up to 2 primary keys
-      * There will be a branch in the future to support 3 keys
-      * Possibly the number of keys can be specify in the setup script :)
+* Allow audit table up to 2 primary keys      
 
 
+---
 ## Stored Procedures
 * zsp_generate_audit( @audit_schema_name, @audit_table_name, OUT @script, OUT @errors )
       * Generate the audit script for one table
@@ -46,15 +48,19 @@ I put the requirement here so in case you want to run this in a lower version of
       * Put the comma separated list of table names to generate a batch of audit scripts
 * zsp_generate_remove_audit( @audit_schema_name, @audit_table_name, OUT @script )
       * Generate the script to remove the triggers and views
+* zsp_generate_batch_remove_audit ( @audit_schema_name, @audit_tables, OUT @script)
+      * Put the comma separated list of table names to generate a batch script that remove all the tables specified
 	  
 ---
 ## Conflict
+* Since MySQL 5 only allow one trigger per action, you have to merge your existing triggers with our audit trigger.
 * If you already have a trigger on your table, this is how you resolve it:
 	 * Copy the code for your trigger, then remove it 
 	 * Run zsp_generate_audit()
 	 * Edit the trigger and add the code you copied to the appropriate trigger	 
 
-## Table Schema
+---
+## Conventions
 All names are prefixed with "z" to stay out of the way of your important stuff
 
 ##### Audit Table: zaudit
