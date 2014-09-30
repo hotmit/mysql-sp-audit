@@ -14,12 +14,12 @@ I put the requirement here so in case you want to run this in a lower version of
 ## Usage
 1. Run 'mysql_sp_audit_setup.sql' script. 
 	* This will create:
-		a. `zaudit` and `zaudit_meta tables` (the tables that hold the data for all the audits)
-		a. Stored procedures:
-			* zsp_generate_audit: generates audit script for one table
-			* zsp_generate_batch_audit: generates a script for multiple table at a time
-			* zsp_generate_remove_audit: generates the script to remove audit from one table
-			* zsp_generate_batch_remove_audit: generates a script for multiple table at a time
+		1. `zaudit` and `zaudit_meta tables` (the tables that hold the data for all the audits)
+		1. Stored procedures:
+			1. zsp_generate_audit: generates audit script for one table
+			1. zsp_generate_batch_audit: generates a script for multiple table at a time
+			1. zsp_generate_remove_audit: generates the script to remove audit from one table
+			1. zsp_generate_batch_remove_audit: generates a script for multiple table at a time
 1. To Enable the audit on the table you want.
 	* zsp_generate_audit( @audit_schema_name, @audit_table_name, OUT @script, OUT @errors )
 		* ie. zsp_generate_audit( 'your_db_name', 'contact', @output_script, @output_errors)
