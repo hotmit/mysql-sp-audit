@@ -28,7 +28,8 @@ var data, file, result = '\
 -- https://github.com/hotmit/mysql-sp-audit \n\
 -- Version: v' + process.argv[2] + '\n\
 -- Build Date: ' + new Date().toUTCString() + '\n\
--- -------------------------------------------------------------------- \n', 
+-- -------------------------------------------------------------------- \n\n\
+DELIMITER $$', 
 	fileList = ['tbl_zaudit.sql', 'zsp_generate_audit.sql', 'zsp_generate_batch_audit.sql', 
 				'zsp_generate_remove_audit.sql', 'zsp_generate_batch_remove_audit.sql'];
 

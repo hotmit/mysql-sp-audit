@@ -3,9 +3,10 @@
 -- Copyright (c) 2014 Du T. Dang. MIT License 
 -- https://github.com/hotmit/mysql-sp-audit 
 -- Version: v1.0
--- Build Date: Mon, 29 Sep 2014 16:12:52 GMT
+-- Build Date: Wed, 22 Oct 2014 16:42:08 GMT
 -- -------------------------------------------------------------------- 
 
+DELIMITER $$
 
 DROP TABLE IF EXISTS `zaudit`
 $$
