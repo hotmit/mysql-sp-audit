@@ -21,8 +21,15 @@ I put the requirement here so in case you want to run this in a lower version of
 			1. zsp_generate_remove_audit: generates the script to remove audit from one table
 			1. zsp_generate_batch_remove_audit: generates a script for multiple table at a time
 1. To Enable the audit on the table you want.
-	* zsp_generate_audit( @audit_schema_name, @audit_table_name, OUT @script, OUT @errors )
-		* eg. zsp_generate_audit( 'your_db_name', 'contact', @output_script, @output_errors)
+	* zsp_generate_audit( @audit_schema_name, @audit_table_name, OUT @script, OUT @errors )				
+		```sql
+		CALL zsp_generate_audit( 'mydb_name', 'my_table_name', @output_script, @output_errors);
+		SELECT @output_script, @output_errors;
+		
+		-- now, copy the output_script column value and save to sql
+		-- once you run that newly create sql file, the table you specified  
+		-- above will audit all create/delete/update transactions
+		```
 	* Copy the value from @output_script and run it
 		* Now you should see three triggers and 2 new views on the contact table
 			* Triggers: zcontact_AINS, zcontact_AUPD, and zcontact_ADEL
